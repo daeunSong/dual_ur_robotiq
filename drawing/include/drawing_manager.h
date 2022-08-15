@@ -37,6 +37,7 @@ class DrawingManager {
     ros::Publisher marker_pub;
     ros::Publisher drawing_line_pub;
     ros::Publisher drawing_color_pub;
+    ros::Publisher trajectory_pub;
 
     // iiwa
     geometry_msgs::Pose init_drawing_pose;

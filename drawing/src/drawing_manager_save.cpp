@@ -9,6 +9,8 @@ void DrawingManager::initPublisher() {
   marker_pub = nh_.advertise<visualization_msgs::Marker>("/target_drawing", 100);
   drawing_line_pub = nh_.advertise<std_msgs::Bool>("/ready_to_draw", 1);
   drawing_color_pub = nh_.advertise<geometry_msgs::Point>("/drawing_color", 1);
+  trajectory_pub = nh_.advertise<moveit_msgs::RobotTrajectory>("/trajectory", 1);
+
 }
 
 // Init marker for target drawing
@@ -71,8 +73,8 @@ int main(int argc, char** argv)
   static const std::string PLANNING_GROUP_GRIPPER_R = "left_gripper";
   static const std::string PLANNING_GROUP_ARM_L = "right_arm";
   static const std::string PLANNING_GROUP_GRIPPER_L = "right_gripper";
-  static const std::string EE_LINK_R = "left_ee_link";
-  static const std::string EE_LINK_L = "right_ee_link";
+  static const std::string EE_LINK_R = "left_gripper_tool0";
+  static const std::string EE_LINK_L = "right_gripper_tool0";
 
   // The :planning_interface:`MoveGroupInterface` class can be easily
   // setup using just the name of the planning group you would like to control and plan for.
@@ -170,6 +172,7 @@ int main(int argc, char** argv)
   for (int i = 0; i < dm.colors.size(); i ++)
   {
     dm.drawing_color_pub.publish(dm.drawings[i].color_);
+    stroke_num = 0;
     for (auto stroke : dm.drawings[i].strokes)
     {
       // move to first position
@@ -188,6 +191,10 @@ int main(int argc, char** argv)
       ROS_INFO("PLANNING DONE");
       my_plan_arm_r.trajectory_ = trajectory;
 
+      dm.trajectory_pub.publish(trajectory);
+      ros::Duration(1.0).sleep();
+
+      /*
       // save trajectory
       trajectory_msgs::JointTrajectory jt;
       jt = trajectory.joint_trajectory;
@@ -216,6 +223,7 @@ int main(int argc, char** argv)
         outfile.close();
         ROS_INFO("File created");
       }
+      */
 
       // publish
       ready.data = true;
@@ -229,6 +237,7 @@ int main(int argc, char** argv)
       // publish
       ready.data = false;
       dm.drawing_line_pub.publish(ready);
+
       stroke_num++;
     }
   }

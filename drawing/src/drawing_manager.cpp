@@ -72,7 +72,7 @@ int main(int argc, char** argv)
   static const std::string PLANNING_GROUP_ARM_L = "right_arm";
   static const std::string PLANNING_GROUP_GRIPPER_L = "right_gripper";
   static const std::string EE_LINK_R = "left_ee_link";
-  static const std::string EE_LINK_L = "right_ee_link";
+  static const std::string EE_LINK_L = "right_gripper_tool0";
 
   // The :planning_interface:`MoveGroupInterface` class can be easily
   // setup using just the name of the planning group you would like to control and plan for.
@@ -168,6 +168,7 @@ int main(int argc, char** argv)
   for (int i = 0; i < dm.colors.size(); i ++)
   {
     dm.drawing_color_pub.publish(dm.drawings[i].color_);
+    stroke_num = 0;
     for (auto stroke : dm.drawings[i].strokes)
     {
       // move to first position

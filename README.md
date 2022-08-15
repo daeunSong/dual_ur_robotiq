@@ -27,6 +27,10 @@ roslaunch drawing drawing.launch
 rosrun drawing drawing_manager
 ```
 
+```commandline
+rosrun drawing save_trajectory.py
+```
+
 ## Real robot execution: Bring up grippers and robots, Run moveit and Rviz   
 Run the lines below in the respective terminals.
 
