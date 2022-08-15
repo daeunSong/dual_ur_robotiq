@@ -1,26 +1,4 @@
-#include <ros/ros.h>
-#include <moveit/move_group_interface/move_group_interface.h>
-#include <moveit/planning_scene_interface/planning_scene_interface.h>
-
-#include <moveit_msgs/DisplayRobotState.h>
-#include <moveit_msgs/DisplayTrajectory.h>
-
-#include <moveit_msgs/AttachedCollisionObject.h>
-#include <moveit_msgs/CollisionObject.h>
-#include <moveit_msgs/ApplyPlanningScene.h>
-
-#include <moveit_visual_tools/moveit_visual_tools.h>
-
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-
-#include "drawing_input.h"
-
-#define TXT_FILE "/input/heart/heart_path_c.txt"
-
-using moveit::planning_interface::MoveItErrorCode;
+#include "drawing_manager.h"
 
 DrawingManager::DrawingManager(ros::NodeHandle* nh):nh_(*nh) {
   initPublisher();
@@ -29,6 +7,8 @@ DrawingManager::DrawingManager(ros::NodeHandle* nh):nh_(*nh) {
 
 void DrawingManager::initPublisher() {
   marker_pub = nh_.advertise<visualization_msgs::Marker>("/target_drawing", 100);
+  drawing_line_pub = nh_.advertise<std_msgs::Bool>("/ready_to_draw", 1);
+  drawing_color_pub = nh_.advertise<geometry_msgs::Point>("/drawing_color", 1);
 }
 
 // Init marker for target drawing
@@ -48,7 +28,7 @@ void DrawingManager::initMarker() {
 }
 
 void DrawingManager::visualizeStrokes(std::vector<Stroke> &strokes, char color){
-  int id = 0;
+  int id = 7;
 
   if(color == 'c'){
     marker.color.r = 0.0; marker.color.g = 1.0; marker.color.b = 1.0;   // cyan (0, 255, 255)
@@ -74,10 +54,15 @@ void DrawingManager::visualizeStrokes(std::vector<Stroke> &strokes, char color){
 
 int main(int argc, char** argv)
 {
+  //*********** Initialize ROSc
   ros::init(argc, argv, "drawingManager");
   ros::NodeHandle nh("~");
 
   DrawingManager dm(&nh);
+
+  //*********** ROS spinner.
+  ros::AsyncSpinner spinner(1);
+  spinner.start();
 
   // MoveIt operates on sets of joints called "planning groups" and stores them in an object called
   // the `JointModelGroup`. Throughout MoveIt the terms "planning group" and "joint model group"
@@ -133,8 +118,7 @@ int main(int argc, char** argv)
   success = (leftArm.plan(my_plan_arm_l) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
 
   leftArm.execute(my_plan_arm_l);
-  ros::Duration(5).sleep(); // wait for 3 sec
-
+  ros::Duration(3).sleep(); // wait for 3 sec
 
 
   geometry_msgs::PoseStamped current_cartesian_position, command_cartesian_position;
@@ -159,14 +143,66 @@ int main(int argc, char** argv)
   current_cartesian_position = rightArm.getCurrentPose(EE_LINK_R);
   drawing_point = current_cartesian_position.pose;
 
-
-
   // start reading input file
-  DrawingInput drawing("heart_path", 'c', current_cartesian_position.pose);
-  dm.drawings.push_back(drawing);
-  dm.visualizeStrokes(drawing.strokes, drawing.color);
+  dm.colors.push_back("c"); dm.colors.push_back("m"); dm.colors.push_back("y"); dm.colors.push_back("k");
+  dm.drawing_file_name = "heart_path_";
 
-  ros::Duration(5).sleep(); // wait for 3 sec
+  for (int i = 0; i < dm.colors.size(); i++){
+    char ch[1];
+    strcpy(ch, dm.colors[i].c_str());
+    ROS_INFO("Drawing init");
+    DrawingInput drawing(dm.drawing_file_name, ch[0], current_cartesian_position.pose);
+    dm.drawings.push_back(drawing);
+    dm.visualizeStrokes(drawing.strokes, drawing.color);
+    ros::Duration(0.1).sleep();
+  }
+
+
+  // draw
+  int stroke_num = 0;
+  std_msgs::Bool ready;
+  ready.data = false;
+  dm.drawing_line_pub.publish(ready);
+  MoveItErrorCode executed = MoveItErrorCode::SUCCESS;
+
+  for (int i = 0; i < dm.colors.size(); i ++)
+  {
+    dm.drawing_color_pub.publish(dm.drawings[i].color_);
+    for (auto stroke : dm.drawings[i].strokes)
+    {
+      // move to first position
+      command_cartesian_position.pose = stroke[0];
+      linear_path.push_back(command_cartesian_position.pose);
+      double fraction = rightArm.computeCartesianPath(linear_path, eef_step, jump_threshold, trajectory);
+      ROS_INFO("PLANNING DONE");
+      my_plan_arm_r.trajectory_ = trajectory;
+      rightArm.execute(my_plan_arm_r);  //ros::Duration(0.1).sleep();
+      if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
+      ROS_INFO("MOVE READY POSITION");
+      linear_path.clear();
+
+      std::cout << "Drawing " << dm.drawings[i].color << " " << stroke_num << "th stroke ... " << std::endl;
+      fraction = rightArm.computeCartesianPath(stroke, eef_step, jump_threshold, trajectory);
+      ROS_INFO("PLANNING DONE");
+      my_plan_arm_r.trajectory_ = trajectory;
+
+      // publish
+      ready.data = true;
+      dm.drawing_line_pub.publish(ready);
+      ros::Duration(0.1).sleep();
+      // execute
+      ROS_INFO("EXECUTING ...");
+      executed = rightArm.execute(my_plan_arm_r);
+      ROS_INFO("EXECUTION DONE");
+      ros::Duration(0.1).sleep();
+      // publish
+      ready.data = false;
+      dm.drawing_line_pub.publish(ready);
+      stroke_num++;
+    }
+  }
+
+  ros::Duration(3).sleep(); // wait for 3 sec
 
   ros::shutdown();
   return 0;

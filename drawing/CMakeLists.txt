@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(drawing)
 
 find_package(catkin REQUIRED
@@ -44,12 +44,19 @@ catkin_package(
     EIGEN3
 )
 
-include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIRS})
+ADD_LIBRARY(drawingInput
+  src/drawing_input.cpp
+)
 
-add_executable(drawing src/drawing.cpp)
-target_link_libraries(drawing ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIRS} include)
+
+add_executable(drawing_manager src/drawing_manager_save.cpp)
+target_link_libraries(drawing_manager drawingInput ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(init_pose src/init_pose.cpp)
 target_link_libraries(init_pose ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(marker_publisher src/marker_publisher.cpp)
+target_link_libraries(marker_publisher ${catkin_LIBRARIES})
 
 

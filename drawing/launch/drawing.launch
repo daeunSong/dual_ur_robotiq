@@ -4,4 +4,6 @@
     <arg name="rviz_config" value="$(find drawing)/src/drawing.rviz" />
   </include>
 
+  <node name="marker_publisher" pkg="drawing" type="marker_publisher" respawn="false" output="screen" />
+
 </launch>
