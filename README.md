@@ -9,16 +9,22 @@ Tested on Ubuntu 18.04 with ROS Melodic.
 ### The features and usage of the dual arm driver are described on the [WIKI](https://github.com/yaesolKim/dual_ur5e/wiki).   
 
 
+## Track-iK
+```shell
+sudo apt-get install ros-melodic-trac-ik-kinematics-plugin
+sudo apt-get upgrade
+```
+
 ## Robot simulation
 ### Run gazebo, moveit, Rviz   
 ```
 roslaunch robot_gazebo dual_ur_robotiq.launch
 roslaunch robot_moveit_config robot_moveit_planning_execution.launch sim:=true
-roslaunch robot_moveit_config moveit_rviz.launch config:=true
+roslaunch drawing drawing.launch
 ```   
-### Pick and place simulation
+### Drawing simulation
 ```commandline
-rosrun pick_place pick_place_collision
+rosrun drawing drawing_manager
 ```
 
 ## Real robot execution: Bring up grippers and robots, Run moveit and Rviz   
