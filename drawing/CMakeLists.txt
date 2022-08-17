@@ -50,7 +50,7 @@ ADD_LIBRARY(drawingInput
 
 include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIRS} include)
 
-add_executable(drawing_manager src/drawing_manager_save.cpp)
+add_executable(drawing_manager src/drawing_manager.cpp)
 target_link_libraries(drawing_manager drawingInput ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(init_pose src/init_pose.cpp)

@@ -39,8 +39,8 @@ class DrawingManager {
     ros::Publisher drawing_color_pub;
     ros::Publisher trajectory_pub;
 
-    // iiwa
-    geometry_msgs::Pose init_drawing_pose;
+    geometry_msgs::Pose init_drawing_pose_r;
+    geometry_msgs::Pose init_drawing_pose_l;
 
     // problem
     std::string drawing_file_name;

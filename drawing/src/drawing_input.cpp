@@ -1,11 +1,14 @@
 #include "drawing_input.h"
 
-DrawingInput::DrawingInput(const std::string &drawing_file_name,
-                                  const char &color, const geometry_msgs::Pose &init_drawing_pose) {
+DrawingInput::DrawingInput(const std::string &drawing_file_name, const char &color,
+                                   const geometry_msgs::Pose &init_drawing_pose_r,
+                                   const geometry_msgs::Pose &init_drawing_pose_l) {
   setFileName(drawing_file_name, color);
-  this->drawing_pose = init_drawing_pose;
+  this->init_drawing_pose_r = init_drawing_pose_r;
+  this->init_drawing_pose_l = init_drawing_pose_l;
   readDrawingFile();
   removeLongLine();
+  splitDrawing();
 }
 
 void DrawingInput::setFileName(const std::string drawing_file_name, const char color) {
@@ -59,7 +62,7 @@ void DrawingInput::readDrawingFile() {
 
   double x, y;
   Stroke stroke;
-  geometry_msgs::Pose drawing_pose = this->drawing_pose;
+  geometry_msgs::Pose drawing_pose = this->init_drawing_pose_r;
 
   while(std::getline(txt, line)) {
     if(line == "End") { // stroke finished
@@ -69,11 +72,12 @@ void DrawingInput::readDrawingFile() {
     }
     else { // start reading strokes
       tempSplit = split(line, ' ');
-      y = (-stod(tempSplit[0])+0.5) * this->ratio * this->target_size + this->drawing_pose.position.y;
-      x = (stod(tempSplit[1])-0.5) * this->target_size + this->drawing_pose.position.x;
+      //TODO: hardcoded
+      y = (-stod(tempSplit[0])+0.5) * this->ratio * this->target_size; // + this->drawing_pose.position.y;
+      x = (stod(tempSplit[1])-0.5) * this->target_size - 0.7;// + this->drawing_pose.position.x;
       drawing_pose.position.x = x;
       drawing_pose.position.y = y;
-      drawing_pose.position.z = this->drawing_pose.position.z - 0.15;
+      drawing_pose.position.z = 1.2;//this->drawing_pose.position.z - 0.15;
       stroke.push_back(drawing_pose);
     }
   }
@@ -107,6 +111,63 @@ void DrawingInput::removeLongLine() {
 
 double DrawingInput::getDist(geometry_msgs::Pose p1, geometry_msgs::Pose p2) {
   return sqrt(pow(p1.position.x - p2.position.x, 2)+ pow(p1.position.y - p2.position.y, 2));
+}
+
+void DrawingInput::splitDrawing () {
+  // TODO: ranges fixed
+  std::array<double, 2> range;
+  range[0] = 1.0; range[1] = 0.0;
+  this->ranges.push_back(range);
+  range[0] = 0.0; range[1] = -1.0;
+  this->ranges.push_back(range);
+  std::vector<std::vector<Stroke>> strokes_by_range (this->ranges.size());
+
+  int range_index_prev, range_index;
+  for (int i = 0; i < this->strokes.size(); i++) {
+    Stroke stroke;
+    range_index_prev = this->detectRange(this->strokes[i][0]);
+
+    for (int j = 1; j < this->strokes[i].size(); j++) {
+      range_index = this->detectRange(strokes[i][j]);
+
+      if (range_index == 0) //left
+        strokes[i][j].orientation = this->init_drawing_pose_l.orientation;
+      else if (range_index == 1) // right
+        strokes[i][j].orientation = this->init_drawing_pose_r.orientation;
+
+      if (range_index_prev != range_index) { // split stroke
+        int index = std::min(range_index_prev, range_index);
+        geometry_msgs::Pose contact = this->strokes[i][j];
+        contact.position.y = this->ranges[index][1];
+        contact.position.z = (strokes[i][j].position.z - strokes[i][j-1].position.z)*(this->ranges[index][1] - strokes[i][j-1].position.y)/(strokes[i][j].position.z - strokes[i][j-1].position.y) + strokes[i][j-1].position.z;
+        stroke.push_back (contact);
+
+        // only if stroke size is bigger than 5 points
+        if (stroke.size() > 2) {
+          strokes_by_range[range_index_prev].push_back(stroke);
+        }
+        Stroke().swap(stroke);
+        stroke.push_back (contact);
+        range_index_prev = range_index;
+      }
+      else {
+        stroke.push_back(this->strokes[i][j]);
+      }
+    }
+    strokes_by_range[range_index].push_back(stroke);
+    Stroke().swap(stroke);
+  }
+
+  this->strokes_by_range = strokes_by_range;
+}
+
+int DrawingInput::detectRange(geometry_msgs::Pose p) {
+  double y = p.position.y;
+  for (int i = 0; i < this->ranges.size(); i++) {
+    if (this->ranges[i][1] < y && y <= this->ranges[i][0])
+      return i;
+  }
+  return -1;
 }
 
 

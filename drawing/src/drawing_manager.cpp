@@ -28,7 +28,7 @@ void DrawingManager::initMarker() {
 }
 
 void DrawingManager::visualizeStrokes(std::vector<Stroke> &strokes, char color){
-  int id = 7;
+  int id = (int)ros::Time::now().toSec()*1000;
 
   if(color == 'c'){
     marker.color.r = 0.0; marker.color.g = 1.0; marker.color.b = 1.0;   // cyan (0, 255, 255)
@@ -98,50 +98,37 @@ int main(int argc, char** argv)
   // init pose
   // set all the joint values to the init joint position
   rightArm.setStartStateToCurrentState();
-  rightArm.setJointValueTarget("left_shoulder_pan_joint", -0.26179); //-15
-  rightArm.setJointValueTarget("left_shoulder_lift_joint", -1.3962634); //-80
-  rightArm.setJointValueTarget("left_elbow_joint", 1.91986); //110
-  rightArm.setJointValueTarget("left_wrist_1_joint", -1.3962634); //-80
-  rightArm.setJointValueTarget("left_wrist_2_joint", 2.35619); //135
-  rightArm.setJointValueTarget("left_wrist_3_joint", -0.523599);  //-30
+  rightArm.setJointValueTarget("left_shoulder_pan_joint", 172*D2R); //-15
+  rightArm.setJointValueTarget("left_shoulder_lift_joint", -97*D2R); //-80
+  rightArm.setJointValueTarget("left_elbow_joint", -106*D2R); //110
+  rightArm.setJointValueTarget("left_wrist_1_joint", -73*D2R); //-80
+  rightArm.setJointValueTarget("left_wrist_2_joint", -44*D2R); //135
+  rightArm.setJointValueTarget("left_wrist_3_joint", -35*D2R);  //-30
   success = (rightArm.plan(my_plan_arm_r) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
 
   rightArm.execute(my_plan_arm_r);
 
   leftArm.setStartStateToCurrentState();
-  leftArm.setJointValueTarget("right_shoulder_pan_joint", 0.26179); //15
-  leftArm.setJointValueTarget("right_shoulder_lift_joint", -1.74532925); //-100
-  leftArm.setJointValueTarget("right_elbow_joint", -1.91986); //-110
-  leftArm.setJointValueTarget("right_wrist_1_joint", -1.3962634); //-80
-  leftArm.setJointValueTarget("right_wrist_2_joint", -2.35619); //-135
-  leftArm.setJointValueTarget("right_wrist_3_joint", -1.0472);  //-60
+  leftArm.setJointValueTarget("right_shoulder_pan_joint", -178*D2R); //15
+  leftArm.setJointValueTarget("right_shoulder_lift_joint", -88*D2R); //-100
+  leftArm.setJointValueTarget("right_elbow_joint", 97*D2R); //-110
+  leftArm.setJointValueTarget("right_wrist_1_joint", -102*D2R); //-80
+  leftArm.setJointValueTarget("right_wrist_2_joint", 46*D2R); //-135
+  leftArm.setJointValueTarget("right_wrist_3_joint", 137*D2R);  //-60
   success = (leftArm.plan(my_plan_arm_l) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
 
   leftArm.execute(my_plan_arm_l);
   ros::Duration(3).sleep(); // wait for 3 sec
+
+  //save init pose
+  dm.init_drawing_pose_r = rightArm.getCurrentPose(EE_LINK_R).pose;
+  dm.init_drawing_pose_l = leftArm.getCurrentPose(EE_LINK_L).pose;
 
 
   geometry_msgs::PoseStamped current_cartesian_position, command_cartesian_position;
   std::vector<geometry_msgs::Pose> drawing_stroke;
   std::vector<geometry_msgs::Pose> linear_path;
   geometry_msgs::Pose drawing_point;
-
-
-//  rightArm.setStartStateToCurrentState();
-//  rightArm.setJointValueTarget("left_shoulder_pan_joint", -0.994838); //-57
-//  rightArm.setJointValueTarget("left_shoulder_lift_joint", -1.27409); //-73
-//  rightArm.setJointValueTarget("left_elbow_joint", 1.76278); //101
-//  rightArm.setJointValueTarget("left_wrist_1_joint", 2.6529); //152
-//  rightArm.setJointValueTarget("left_wrist_2_joint", -0.541052); //-31
-//  rightArm.setJointValueTarget("left_wrist_3_joint", -3.07178);  //-176
-//  success = (rightArm.plan(my_plan_arm_r) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-//
-//  rightArm.execute(my_plan_arm_r);
-
-
-  //save init pose
-  current_cartesian_position = rightArm.getCurrentPose(EE_LINK_R);
-  drawing_point = current_cartesian_position.pose;
 
   // start reading input file
   dm.colors.push_back("c"); dm.colors.push_back("m"); dm.colors.push_back("y"); dm.colors.push_back("k");
@@ -151,12 +138,12 @@ int main(int argc, char** argv)
     char ch[1];
     strcpy(ch, dm.colors[i].c_str());
     ROS_INFO("Drawing init");
-    DrawingInput drawing(dm.drawing_file_name, ch[0], current_cartesian_position.pose);
+    DrawingInput drawing(dm.drawing_file_name, ch[0], dm.init_drawing_pose_r, dm.init_drawing_pose_l);
     dm.drawings.push_back(drawing);
-    dm.visualizeStrokes(drawing.strokes, drawing.color);
-    ros::Duration(0.1).sleep();
+//    for (int j = 0; j < drawing.strokes_by_range.size(); j++)
+//      dm.visualizeStrokes(drawing.strokes_by_range[j], drawing.color);
+//    ros::Duration(0.5).sleep();
   }
-
 
   // draw
   int stroke_num = 0;
@@ -165,11 +152,51 @@ int main(int argc, char** argv)
   dm.drawing_line_pub.publish(ready);
   MoveItErrorCode executed = MoveItErrorCode::SUCCESS;
 
+  // left arm
   for (int i = 0; i < dm.colors.size(); i ++)
   {
     dm.drawing_color_pub.publish(dm.drawings[i].color_);
     stroke_num = 0;
-    for (auto stroke : dm.drawings[i].strokes)
+    for (auto stroke : dm.drawings[i].strokes_by_range[0])
+    {
+      // move to first position
+      command_cartesian_position.pose = stroke[0];
+      linear_path.push_back(command_cartesian_position.pose);
+      double fraction = leftArm.computeCartesianPath(linear_path, eef_step, jump_threshold, trajectory);
+      ROS_INFO("PLANNING DONE");
+      my_plan_arm_r.trajectory_ = trajectory;
+      leftArm.execute(my_plan_arm_r);  //ros::Duration(0.1).sleep();
+      if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
+      ROS_INFO("MOVE READY POSITION");
+      linear_path.clear();
+
+      std::cout << "Drawing " << dm.drawings[i].color << " " << stroke_num << "th stroke ... " << std::endl;
+      fraction = leftArm.computeCartesianPath(stroke, eef_step, jump_threshold, trajectory);
+      ROS_INFO("PLANNING DONE");
+      my_plan_arm_r.trajectory_ = trajectory;
+
+      // publish
+      ready.data = true;
+      dm.drawing_line_pub.publish(ready);
+      ros::Duration(0.1).sleep();
+      // execute
+      ROS_INFO("EXECUTING ...");
+      executed = leftArm.execute(my_plan_arm_r);
+      ROS_INFO("EXECUTION DONE");
+      ros::Duration(0.1).sleep();
+      // publish
+      ready.data = false;
+      dm.drawing_line_pub.publish(ready);
+      stroke_num++;
+    }
+  }
+
+  // right arm
+  for (int i = 0; i < dm.colors.size(); i ++)
+  {
+    dm.drawing_color_pub.publish(dm.drawings[i].color_);
+    stroke_num = 0;
+    for (auto stroke : dm.drawings[i].strokes_by_range[0])
     {
       // move to first position
       command_cartesian_position.pose = stroke[0];
