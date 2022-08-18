@@ -7,7 +7,7 @@ DrawingInput::DrawingInput(const std::string &drawing_file_name, const char &col
   this->init_drawing_pose_r = init_drawing_pose_r;
   this->init_drawing_pose_l = init_drawing_pose_l;
   readDrawingFile();
-  removeLongLine();
+//  removeLongLine();
   splitDrawing();
 }
 

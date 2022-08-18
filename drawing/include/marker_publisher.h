@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Int32.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PoseArray.h>
 #include <visualization_msgs/Marker.h>
@@ -41,6 +42,7 @@ class MarkerPublisher {
     geometry_msgs::PoseArray trajectories;
     tf::TransformListener listener;
     tf::StampedTransform transform;
+    int arm_num;
 
     void initSubscriber();
     void initPublisher();
@@ -48,11 +50,13 @@ class MarkerPublisher {
 
     ros::Subscriber drawing_sub;
     ros::Subscriber color_sub;
+    ros::Subscriber arm_num_sub;
     ros::Subscriber traj_sub;
     ros::Subscriber coord_sub; //
 
     void drawCallback(const std_msgs::Bool::ConstPtr& msg);
     void colorCallback(const geometry_msgs::Point::ConstPtr& msg);
+    void armNumCallback(const std_msgs::Int32::ConstPtr& msg);
     void trajCallback(const geometry_msgs::PoseArray::ConstPtr& msg);
     void coordCallback(const geometry_msgs::Pose::ConstPtr& msg); //
 };

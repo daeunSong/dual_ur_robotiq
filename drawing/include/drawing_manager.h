@@ -14,6 +14,7 @@
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
 #include <std_msgs/Bool.h>
+#include <std_msgs/Int32.h>
 
 #include <string>
 #include <vector>
@@ -38,6 +39,7 @@ class DrawingManager {
     ros::Publisher drawing_line_pub;
     ros::Publisher drawing_color_pub;
     ros::Publisher trajectory_pub;
+    ros::Publisher arm_num_pub;
 
     geometry_msgs::Pose init_drawing_pose_r;
     geometry_msgs::Pose init_drawing_pose_l;

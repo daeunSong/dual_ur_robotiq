@@ -8,6 +8,9 @@ MarkerPublisher::MarkerPublisher(ros::NodeHandle* nh):nh_(*nh) {
   visual_tools_->deleteAllMarkers();
   visual_tools_->enableBatchPublishing();
 
+  // right arm is used by default
+  arm_num = 0;
+
   initSubscriber();
   initPublisher();
   initMarker();
@@ -17,6 +20,7 @@ MarkerPublisher::MarkerPublisher(ros::NodeHandle* nh):nh_(*nh) {
 void MarkerPublisher::initSubscriber() {
   drawing_sub = nh_.subscribe("/ready_to_draw", 10, &MarkerPublisher::drawCallback, this);
   color_sub = nh_.subscribe("/drawing_color", 10, &MarkerPublisher::colorCallback, this);
+  arm_num_sub = nh_.subscribe("/arm_number", 10, &MarkerPublisher::armNumCallback, this);
 }
 
 // Init publisher
@@ -49,15 +53,35 @@ void MarkerPublisher::colorCallback(const geometry_msgs::Point::ConstPtr& msg){
   setColor();
 }
 
+// Callback function to know which arm is moving
+// 0 for right 1 for left
+void MarkerPublisher::armNumCallback(const std_msgs::Int32::ConstPtr& msg){
+  arm_num = msg->data;
+}
+
 // Get the end-effector pose
 geometry_msgs::Point MarkerPublisher::getEEPoint(){
-  try {
-    listener.waitForTransform("/world", "/left_ee_link", ros::Time(0), ros::Duration(3.0));
-    listener.lookupTransform("/world", "/left_ee_link", ros::Time(0), transform);
+  if (arm_num == 0) // right
+  {
+    try {
+      listener.waitForTransform("/world", "/left_gripper_tool0", ros::Time(0), ros::Duration(3.0));
+      listener.lookupTransform("/world", "/left_gripper_tool0", ros::Time(0), transform);
+    }
+    catch (tf::TransformException ex){
+      ROS_ERROR("%s",ex.what());
+      ros::Duration(1.0).sleep();
+    }
   }
-  catch (tf::TransformException ex){
-    ROS_ERROR("%s",ex.what());
-    ros::Duration(1.0).sleep();
+  else // left
+  {
+    try {
+      listener.waitForTransform("/world", "/right_gripper_tool0", ros::Time(0), ros::Duration(3.0));
+      listener.lookupTransform("/world", "/right_gripper_tool0", ros::Time(0), transform);
+    }
+    catch (tf::TransformException ex){
+      ROS_ERROR("%s",ex.what());
+      ros::Duration(1.0).sleep();
+    }
   }
 
   geometry_msgs::Point p;

@@ -9,6 +9,7 @@ void DrawingManager::initPublisher() {
   marker_pub = nh_.advertise<visualization_msgs::Marker>("/target_drawing", 100);
   drawing_line_pub = nh_.advertise<std_msgs::Bool>("/ready_to_draw", 1);
   drawing_color_pub = nh_.advertise<geometry_msgs::Point>("/drawing_color", 1);
+  arm_num_pub = nh_.advertise<std_msgs::Int32>("/arm_number", 1);
 }
 
 // Init marker for target drawing
@@ -71,7 +72,7 @@ int main(int argc, char** argv)
   static const std::string PLANNING_GROUP_GRIPPER_R = "left_gripper";
   static const std::string PLANNING_GROUP_ARM_L = "right_arm";
   static const std::string PLANNING_GROUP_GRIPPER_L = "right_gripper";
-  static const std::string EE_LINK_R = "left_ee_link";
+  static const std::string EE_LINK_R = "left_gripper_tool0";
   static const std::string EE_LINK_L = "right_gripper_tool0";
 
   // The :planning_interface:`MoveGroupInterface` class can be easily
@@ -153,25 +154,28 @@ int main(int argc, char** argv)
   MoveItErrorCode executed = MoveItErrorCode::SUCCESS;
 
   // left arm
+  std_msgs::Int32 arm_num;
+  arm_num.data = 1;
+  dm.arm_num_pub.publish(arm_num);
   for (int i = 0; i < dm.colors.size(); i ++)
   {
     dm.drawing_color_pub.publish(dm.drawings[i].color_);
     stroke_num = 0;
-    for (auto stroke : dm.drawings[i].strokes_by_range[0])
+    for (auto stroke : dm.drawings[i].strokes_by_range[1])
     {
-      // move to first position
-      command_cartesian_position.pose = stroke[0];
-      linear_path.push_back(command_cartesian_position.pose);
-      double fraction = leftArm.computeCartesianPath(linear_path, eef_step, jump_threshold, trajectory);
-      ROS_INFO("PLANNING DONE");
-      my_plan_arm_r.trajectory_ = trajectory;
-      leftArm.execute(my_plan_arm_r);  //ros::Duration(0.1).sleep();
-      if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
-      ROS_INFO("MOVE READY POSITION");
-      linear_path.clear();
+//      // move to first position
+//      command_cartesian_position.pose = stroke[0];
+//      linear_path.push_back(command_cartesian_position.pose);
+//      double fraction = leftArm.computeCartesianPath(linear_path, eef_step, jump_threshold, trajectory);
+//      ROS_INFO("PLANNING DONE");
+//      my_plan_arm_r.trajectory_ = trajectory;
+//      leftArm.execute(my_plan_arm_r);  //ros::Duration(0.1).sleep();
+//      if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
+//      ROS_INFO("MOVE READY POSITION");
+//      linear_path.clear();
 
       std::cout << "Drawing " << dm.drawings[i].color << " " << stroke_num << "th stroke ... " << std::endl;
-      fraction = leftArm.computeCartesianPath(stroke, eef_step, jump_threshold, trajectory);
+      double fraction = leftArm.computeCartesianPath(stroke, eef_step, jump_threshold, trajectory);
       ROS_INFO("PLANNING DONE");
       my_plan_arm_r.trajectory_ = trajectory;
 
@@ -192,6 +196,8 @@ int main(int argc, char** argv)
   }
 
   // right arm
+  arm_num.data = 0;
+  dm.arm_num_pub.publish(arm_num);
   for (int i = 0; i < dm.colors.size(); i ++)
   {
     dm.drawing_color_pub.publish(dm.drawings[i].color_);
@@ -199,18 +205,18 @@ int main(int argc, char** argv)
     for (auto stroke : dm.drawings[i].strokes_by_range[0])
     {
       // move to first position
-      command_cartesian_position.pose = stroke[0];
-      linear_path.push_back(command_cartesian_position.pose);
-      double fraction = rightArm.computeCartesianPath(linear_path, eef_step, jump_threshold, trajectory);
-      ROS_INFO("PLANNING DONE");
-      my_plan_arm_r.trajectory_ = trajectory;
-      rightArm.execute(my_plan_arm_r);  //ros::Duration(0.1).sleep();
-      if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
-      ROS_INFO("MOVE READY POSITION");
-      linear_path.clear();
+//      command_cartesian_position.pose = stroke[0];
+//      linear_path.push_back(command_cartesian_position.pose);
+//      double fraction = rightArm.computeCartesianPath(linear_path, eef_step, jump_threshold, trajectory);
+//      ROS_INFO("PLANNING DONE");
+//      my_plan_arm_r.trajectory_ = trajectory;
+//      rightArm.execute(my_plan_arm_r);  //ros::Duration(0.1).sleep();
+//      if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
+//      ROS_INFO("MOVE READY POSITION");
+//      linear_path.clear();
 
       std::cout << "Drawing " << dm.drawings[i].color << " " << stroke_num << "th stroke ... " << std::endl;
-      fraction = rightArm.computeCartesianPath(stroke, eef_step, jump_threshold, trajectory);
+      double fraction = rightArm.computeCartesianPath(stroke, eef_step, jump_threshold, trajectory);
       ROS_INFO("PLANNING DONE");
       my_plan_arm_r.trajectory_ = trajectory;
 
