@@ -74,10 +74,10 @@ void DrawingInput::readDrawingFile() {
       tempSplit = split(line, ' ');
       //TODO: hardcoded
       y = (-stod(tempSplit[0])+0.5) * this->ratio * this->target_size; // + this->drawing_pose.position.y;
-      x = (stod(tempSplit[1])-0.5) * this->target_size - 0.7;// + this->drawing_pose.position.x;
+      x = (stod(tempSplit[1])-0.5) * this->target_size - 0.6;// + this->drawing_pose.position.x;
       drawing_pose.position.x = x;
       drawing_pose.position.y = y;
-      drawing_pose.position.z = 1.2;//this->drawing_pose.position.z - 0.15;
+      drawing_pose.position.z = 1.1;//this->drawing_pose.position.z - 0.15;
       stroke.push_back(drawing_pose);
     }
   }
@@ -140,6 +140,12 @@ void DrawingInput::splitDrawing () {
         geometry_msgs::Pose contact = this->strokes[i][j];
         contact.position.y = this->ranges[index][1];
         contact.position.z = (strokes[i][j].position.z - strokes[i][j-1].position.z)*(this->ranges[index][1] - strokes[i][j-1].position.y)/(strokes[i][j].position.z - strokes[i][j-1].position.y) + strokes[i][j-1].position.z;
+
+        if (range_index == 0) //right to left
+          contact.orientation = this->init_drawing_pose_r.orientation;
+        else if (range_index == 1) // left to right
+         contact.orientation = this->init_drawing_pose_l.orientation;
+
         stroke.push_back (contact);
 
         // only if stroke size is bigger than 5 points
@@ -147,6 +153,12 @@ void DrawingInput::splitDrawing () {
           strokes_by_range[range_index_prev].push_back(stroke);
         }
         Stroke().swap(stroke);
+
+        if (range_index == 0) //right to left
+          contact.orientation = this->init_drawing_pose_l.orientation;
+        else if (range_index == 1) // left to right
+         contact.orientation = this->init_drawing_pose_r.orientation;
+
         stroke.push_back (contact);
         range_index_prev = range_index;
       }
