@@ -7,6 +7,7 @@ from moveit_msgs.msg import RobotTrajectory
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import moveit_commander
 from geometry_msgs.msg import Pose, Point
+from std_msgs.msg import Int32
 
 FILE_NAME = 'heart_path_'
 FILE_COLORS = ['c', 'm', 'y', 'k']
@@ -16,16 +17,22 @@ class TrajeectorySaver:
     def __init__(self, file_path):
         self.trajectory_sub = rospy.Subscriber("/trajectory", RobotTrajectory, self.callback_traj)
         self.color_sub = rospy.Subscriber("/drawing_color", Point, self.callback_color)
+        self.armNum_sub = rospy.Subscriber("/arm_number", Int32, self.callback_armNum)
         self.file_path_init = file_path
         self.file_path = file_path
         self.plan = None
         self.color = None
-        self.num = 0
+        self.arm_num = 0
+        self.file_num = 0
+
 
     def callback_traj(self, msg):
         self.plan = msg
-        self.file_path = self.file_path_init + self.color + '_' + str(self.num) + '.yaml'
-        self.num = self.num + 1
+        if self.arm_num == 0:   # right
+            self.file_path = self.file_path_init + '_r_' + self.color + '_' + str(self.file_num) + '.yaml'
+        elif self.arm_num == 1: # left
+            self.file_path = self.file_path_init + '_l_' + self.color + '_' + str(self.file_num) + '.yaml'
+        self.file_num = self.file_num + 1
 
         # dump the plan into yaml file
         with open(self.file_path, 'w') as file_save:
@@ -34,17 +41,21 @@ class TrajeectorySaver:
     def callback_color(self, msg):
         if msg.x == 0.0 and msg.y == 1.0 and msg.z == 1.0: # cyan
             self.color = 'c'
-            self.num = 0
+            self.file_num = 0
         elif msg.x == 1.0 and msg.y == 0.0 and msg.z == 1.0: # magenta
             self.color = 'm'
-            self.num = 0
+            self.file_num = 0
         elif msg.x == 1.0 and msg.y == 1.0 and msg.z == 0.0: # yellow
             self.color = 'y'
-            self.num = 0
+            self.file_num = 0
         else: # black
             self.color = 'k'
-            self.num = 0
+            self.file_num = 0
         print('message recieved: ' + self.color)
+
+    def callback_armNum(self, msg):
+        self.arm_num = msg.data
+
 
 class TrajectoryLoader:
     def __init__(self, file_path):
