@@ -74,7 +74,7 @@ void DrawingInput::readDrawingFile() {
       tempSplit = split(line, ' ');
       //TODO: hardcoded
       y = (-stod(tempSplit[0])+0.5) * this->ratio * this->target_size; // + this->drawing_pose.position.y;
-      x = (stod(tempSplit[1])-0.5) * this->target_size - 0.6;// + this->drawing_pose.position.x;
+      x = (stod(tempSplit[1])-0.5) * this->target_size - 0.55;// + this->drawing_pose.position.x;
       drawing_pose.position.x = x;
       drawing_pose.position.y = y;
       drawing_pose.position.z = 1.1;//this->drawing_pose.position.z - 0.15;
