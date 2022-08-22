@@ -9,7 +9,7 @@ from std_msgs.msg import Int32, Bool
 
 FILE_NAME = 'heart_path_'
 FILE_COLORS = ['c', 'm', 'y', 'k']
-FILE_NUMS = [10, 26, 2, 8]
+FILE_NUMS = [9, 24, 0, 7]
 
 class TrajectoryLoader:
     def __init__(self, file_path, arm_num = 0):
@@ -80,17 +80,21 @@ class TrajectoryLoader:
                     rospy.sleep(1)
                     print('drawing ' + color + ' ' + str(num) + 'th stroke')
                     self.arm.execute(loaded_plan, wait=True)
+                    # for k in range(len(loaded_plan.joint_trajectory.points)):
+                    #     for j, q in enumerate(loaded_plan.joint_trajectory.points[k].positions):
+                    #         joint_goal[j] = loaded_plan.joint_trajectory.points[k].positions[j]
+                    #     self.arm.go(joint_goal, wait=True)
                     self.drawing_line_pub.publish(False)
 
 
 if __name__ == '__main__':
 
-    rospy.init_node('trajectory_loader', anonymous=True)
+    rospy.init_node('trajectory_loader_2', anonymous=True)
 
     rospack = rospkg.RosPack()
     package_path = rospack.get_path('drawing')
     file_path = package_path + '/data/trajectory/' + FILE_NAME
 
-    right = TrajectoryLoader(file_path, 0)
-    right.load_traj()
+    left = TrajectoryLoader(file_path, 1)
+    left.load_traj()
 
