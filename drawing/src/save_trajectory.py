@@ -7,11 +7,11 @@ from moveit_msgs.msg import RobotTrajectory
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import moveit_commander
 from geometry_msgs.msg import Pose, Point
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, Bool
 
 FILE_NAME = 'heart_path_'
 FILE_COLORS = ['c', 'm', 'y', 'k']
-FILE_NUMS = [1, 2, 1, 1]
+FILE_NUMS = [10, 26, 2, 8]
 
 class TrajeectorySaver:
     def __init__(self, file_path):
@@ -29,9 +29,9 @@ class TrajeectorySaver:
     def callback_traj(self, msg):
         self.plan = msg
         if self.arm_num == 0:   # right
-            self.file_path = self.file_path_init + '_r_' + self.color + '_' + str(self.file_num) + '.yaml'
+            self.file_path = self.file_path_init + 'r_' + self.color + '_' + str(self.file_num) + '.yaml'
         elif self.arm_num == 1: # left
-            self.file_path = self.file_path_init + '_l_' + self.color + '_' + str(self.file_num) + '.yaml'
+            self.file_path = self.file_path_init + 'l_' + self.color + '_' + str(self.file_num) + '.yaml'
         self.file_num = self.file_num + 1
 
         # dump the plan into yaml file
@@ -62,6 +62,10 @@ class TrajectoryLoader:
         self.file_path_init = file_path
         self.file_path = file_path
 
+        # publisher
+        self.drawing_line_pub = rospy.Publisher('/ready_to_draw', Bool, queue_size=1)
+        self.drawing_color_pub = rospy.Publisher('/drawing_color', Point, queue_size=1)
+
         # moveit
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
@@ -74,14 +78,36 @@ class TrajectoryLoader:
 
     def load_traj (self):
         for i, color in enumerate(FILE_COLORS):
+            c = Point()
+            if color == 'c':
+                c.x = 0.0; c.y = 1.0; c.z = 1.0
+            elif color == 'm':
+                c.x = 1.0; c.y = 0.0; c.z = 1.0
+            elif color == 'y':
+                c.x = 1.0; c.y = 1.0; c.z = 0.0
+            else : # 'k'
+                c.x = 0.0; c.y = 0.0; c.z = 0.0
+            self.drawing_color_pub.publish(c)
+
             for num in range(FILE_NUMS[i]):
-                self.file_path = self.file_path_init + color + '_' + str(num) + '.yaml'
+                ready = Bool()
+                self.file_path = self.file_path_init + 'r_' + color + '_' + str(num) + '.yaml'
                 print('file path: ' + self.file_path)
                 with open(self.file_path, 'r') as file_open:
                     print('loading ...')
                     loaded_plan = yaml.load(file_open)
+                    # move to first pose
+                    joint_goal = self.right_arm.get_current_joint_values()
+                    for j, q in enumerate(loaded_plan.joint_trajectory.points[0].positions):
+                        joint_goal[j] = loaded_plan.joint_trajectory.points[0].positions[j]
+                    self.right_arm.go(joint_goal, wait=True)
+                    # draw
+                    ready.data = True
+                    self.drawing_line_pub.publish(ready)
                     print('drawing ' + color + ' ' + str(num) + 'th stroke')
                     self.right_arm.execute(loaded_plan, wait=True)
+                    ready.data = False
+                    self.drawing_line_pub.publish(ready)
 
 
 if __name__ == '__main__':
@@ -92,9 +118,9 @@ if __name__ == '__main__':
     package_path = rospack.get_path('drawing')
     file_path = package_path + '/data/trajectory/' + FILE_NAME
 
-    Saver = TrajeectorySaver(file_path)
-    # Loader = TrajectoryLoader(file_path)
-    # Loader.load_traj()
+    # Saver = TrajeectorySaver(file_path)
+    Loader = TrajectoryLoader(file_path)
+    Loader.load_traj()
 
     # Keep the program running
     rospy.spin()
