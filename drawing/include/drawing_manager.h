@@ -28,6 +28,18 @@ class DrawingManager {
   public:
     DrawingManager(ros::NodeHandle* nh);
 
+    // moveit
+    moveit::planning_interface::MoveGroupInterface *rightArm;
+    moveit::planning_interface::MoveGroupInterface *rightGripper;
+    moveit::planning_interface::MoveGroupInterface *leftArm;
+    moveit::planning_interface::MoveGroupInterface *leftGripper;
+    moveit::planning_interface::PlanningSceneInterface *planning_scene_interface;
+    const std::string EE_LINK_R = "left_gripper_tool0";
+    const std::string EE_LINK_L = "right_gripper_tool0";
+
+    const double jump_threshold = 0.0; // 0.0
+    const double eef_step = 0.001; // 0.001
+
     int manager_state;
 
     std::vector<DrawingInput> drawings;
@@ -49,10 +61,18 @@ class DrawingManager {
     std::vector<std::string> colors;
 
     void visualizeStrokes(std::vector<Stroke> &strokes, char color);
+    void setJointValue (double q[], int arm_num);
+    void initPose ();
 
   private:
     ros::NodeHandle nh_;
 
+    const std::string PLANNING_GROUP_ARM_R = "left_arm";
+    const std::string PLANNING_GROUP_GRIPPER_R = "left_gripper";
+    const std::string PLANNING_GROUP_ARM_L = "right_arm";
+    const std::string PLANNING_GROUP_GRIPPER_L = "right_gripper";
+
+    void initMoveGroup();
     void initPublisher();
     void initMarker();
 

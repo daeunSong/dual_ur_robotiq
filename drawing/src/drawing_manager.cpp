@@ -1,8 +1,19 @@
 #include "drawing_manager.h"
 
 DrawingManager::DrawingManager(ros::NodeHandle* nh):nh_(*nh) {
+  initMoveGroup();
   initPublisher();
   initMarker();
+}
+
+void DrawingManager::initMoveGroup() {
+  this->rightArm = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP_ARM_R);
+  this->rightGripper = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP_GRIPPER_R);
+  this->leftArm = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP_ARM_L);
+  this->leftGripper = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP_GRIPPER_L);
+
+  this->rightArm->setEndEffectorLink(EE_LINK_R);
+  this->leftArm->setEndEffectorLink(EE_LINK_L);
 }
 
 void DrawingManager::initPublisher() {
@@ -54,6 +65,46 @@ void DrawingManager::visualizeStrokes(std::vector<Stroke> &strokes, char color){
   }
 }
 
+void DrawingManager::setJointValue (double q[], int arm_num = 0){
+  moveit::planning_interface::MoveGroupInterface::Plan my_plan;
+  bool success;
+
+  if (arm_num == 0) // right
+  {
+    this->rightArm->setStartStateToCurrentState();
+    this->rightArm->setJointValueTarget("left_shoulder_pan_joint", q[0]);
+    this->rightArm->setJointValueTarget("left_shoulder_lift_joint", q[1]);
+    this->rightArm->setJointValueTarget("left_elbow_joint", q[2]);
+    this->rightArm->setJointValueTarget("left_wrist_1_joint", q[3]);
+    this->rightArm->setJointValueTarget("left_wrist_2_joint", q[4]);
+    this->rightArm->setJointValueTarget("left_wrist_3_joint", q[5]);
+    success = (this->rightArm->plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+
+    this->rightArm->execute(my_plan);
+  }
+  else if (arm_num == 1) // left
+  {
+    this->leftArm->setStartStateToCurrentState();
+    this->leftArm->setJointValueTarget("right_shoulder_pan_joint", q[0]);
+    this->leftArm->setJointValueTarget("right_shoulder_lift_joint", q[1]);
+    this->leftArm->setJointValueTarget("right_elbow_joint", q[2]);
+    this->leftArm->setJointValueTarget("right_wrist_1_joint", q[3]);
+    this->leftArm->setJointValueTarget("right_wrist_2_joint", q[4]);
+    this->leftArm->setJointValueTarget("right_wrist_3_joint", q[5]);
+    success = (this->leftArm->plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+
+    this->leftArm->execute(my_plan);
+  }
+}
+
+void DrawingManager::initPose (){
+  double init_r[6] = {172*D2R, -97*D2R, -106*D2R, -73*D2R, -44*D2R, -35*D2R};
+  double init_l[6] = {-178*D2R, -88*D2R, 97*D2R, -102*D2R, 46*D2R, -43*D2R};
+
+  this->setJointValue(init_r, 0);
+  this->setJointValue(init_l, 1);
+}
+
 int main(int argc, char** argv)
 {
   //*********** Initialize ROSc
@@ -66,65 +117,18 @@ int main(int argc, char** argv)
   ros::AsyncSpinner spinner(1);
   spinner.start();
 
-  // MoveIt operates on sets of joints called "planning groups" and stores them in an object called
-  // the `JointModelGroup`. Throughout MoveIt the terms "planning group" and "joint model group"
-  // are used interchangably.
-  static const std::string PLANNING_GROUP_ARM_R = "left_arm";
-  static const std::string PLANNING_GROUP_GRIPPER_R = "left_gripper";
-  static const std::string PLANNING_GROUP_ARM_L = "right_arm";
-  static const std::string PLANNING_GROUP_GRIPPER_L = "right_gripper";
-  static const std::string EE_LINK_R = "left_gripper_tool0";
-  static const std::string EE_LINK_L = "right_gripper_tool0";
-
-  // The :planning_interface:`MoveGroupInterface` class can be easily
-  // setup using just the name of the planning group you would like to control and plan for.
-  moveit::planning_interface::MoveGroupInterface rightArm(PLANNING_GROUP_ARM_R);
-  moveit::planning_interface::MoveGroupInterface rightGripper(PLANNING_GROUP_GRIPPER_R);
-  moveit::planning_interface::MoveGroupInterface leftArm(PLANNING_GROUP_ARM_L);
-  moveit::planning_interface::MoveGroupInterface leftGripper(PLANNING_GROUP_GRIPPER_L);
-
-  rightArm.setEndEffectorLink(EE_LINK_R);
-  leftArm.setEndEffectorLink(EE_LINK_L);
-
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-  moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm_r;
-  moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm_l;
+  moveit::planning_interface::MoveGroupInterface::Plan my_plan;
   moveit_msgs::RobotTrajectory trajectory;
-  const double jump_threshold = 0.0; // 0.0
-  const double eef_step = 0.001; // 0.001
-
-
   bool success;
-  MoveItErrorCode success_plan = MoveItErrorCode::FAILURE, motion_done = MoveItErrorCode::FAILURE;
 
   // init pose
   // set all the joint values to the init joint position
-  rightArm.setStartStateToCurrentState();
-  rightArm.setJointValueTarget("left_shoulder_pan_joint", 172*D2R); //-15
-  rightArm.setJointValueTarget("left_shoulder_lift_joint", -97*D2R); //-80
-  rightArm.setJointValueTarget("left_elbow_joint", -106*D2R); //110
-  rightArm.setJointValueTarget("left_wrist_1_joint", -73*D2R); //-80
-  rightArm.setJointValueTarget("left_wrist_2_joint", -44*D2R); //135
-  rightArm.setJointValueTarget("left_wrist_3_joint", -35*D2R);  //-30
-  success = (rightArm.plan(my_plan_arm_r) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
-  rightArm.execute(my_plan_arm_r);
-
-  leftArm.setStartStateToCurrentState();
-  leftArm.setJointValueTarget("right_shoulder_pan_joint", -178*D2R); //15
-  leftArm.setJointValueTarget("right_shoulder_lift_joint", -88*D2R); //-100
-  leftArm.setJointValueTarget("right_elbow_joint", 97*D2R); //-110
-  leftArm.setJointValueTarget("right_wrist_1_joint", -102*D2R); //-80
-  leftArm.setJointValueTarget("right_wrist_2_joint", 46*D2R); //-135
-  leftArm.setJointValueTarget("right_wrist_3_joint", 137*D2R);  //-60
-  success = (leftArm.plan(my_plan_arm_l) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
-  leftArm.execute(my_plan_arm_l);
+  dm.initPose();
   ros::Duration(3).sleep(); // wait for 3 sec
 
   //save init pose
-  dm.init_drawing_pose_r = rightArm.getCurrentPose(EE_LINK_R).pose;
-  dm.init_drawing_pose_l = leftArm.getCurrentPose(EE_LINK_L).pose;
+  dm.init_drawing_pose_r = dm.rightArm->getCurrentPose(dm.EE_LINK_R).pose;
+  dm.init_drawing_pose_l = dm.leftArm->getCurrentPose(dm.EE_LINK_L).pose;
 
 
   geometry_msgs::PoseStamped current_cartesian_position, command_cartesian_position;
@@ -167,18 +171,18 @@ int main(int argc, char** argv)
       // move to first position
       command_cartesian_position.pose = stroke[0];
       linear_path.push_back(command_cartesian_position.pose);
-      double fraction = leftArm.computeCartesianPath(linear_path, eef_step, jump_threshold, trajectory);
+      double fraction = dm.leftArm->computeCartesianPath(linear_path, dm.eef_step, dm.jump_threshold, trajectory);
       ROS_INFO("PLANNING DONE");
-      my_plan_arm_r.trajectory_ = trajectory;
-      leftArm.execute(my_plan_arm_r);  //ros::Duration(0.1).sleep();
+      my_plan.trajectory_ = trajectory;
+      dm.leftArm->execute(my_plan);  //ros::Duration(0.1).sleep();
       if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
       ROS_INFO("MOVE READY POSITION");
       linear_path.clear();
 
       std::cout << "Drawing " << dm.drawings[i].color << " " << stroke_num << "th stroke ... " << std::endl;
-      fraction = leftArm.computeCartesianPath(stroke, eef_step, jump_threshold, trajectory);
+      fraction = dm.leftArm->computeCartesianPath(stroke, dm.eef_step, dm.jump_threshold, trajectory);
       ROS_INFO("PLANNING DONE");
-      my_plan_arm_r.trajectory_ = trajectory;
+      my_plan.trajectory_ = trajectory;
       dm.trajectory_pub.publish(trajectory);
 
       // publish
@@ -187,7 +191,7 @@ int main(int argc, char** argv)
       ros::Duration(0.1).sleep();
       // execute
       ROS_INFO("EXECUTING ...");
-      executed = leftArm.execute(my_plan_arm_r);
+      executed = dm.leftArm->execute(my_plan);
       ROS_INFO("EXECUTION DONE");
       ros::Duration(0.1).sleep();
       // publish
@@ -196,6 +200,8 @@ int main(int argc, char** argv)
       stroke_num++;
     }
   }
+
+  dm.initPose();
 
   // right arm
   arm_num.data = 0;
@@ -209,18 +215,18 @@ int main(int argc, char** argv)
       // move to first position
       command_cartesian_position.pose = stroke[0];
       linear_path.push_back(command_cartesian_position.pose);
-      double fraction = rightArm.computeCartesianPath(linear_path, eef_step, jump_threshold, trajectory);
+      double fraction = dm.rightArm->computeCartesianPath(linear_path, dm.eef_step, dm.jump_threshold, trajectory);
       ROS_INFO("PLANNING DONE");
-      my_plan_arm_r.trajectory_ = trajectory;
-      rightArm.execute(my_plan_arm_r);  //ros::Duration(0.1).sleep();
+      my_plan.trajectory_ = trajectory;
+      dm.rightArm->execute(my_plan);  //ros::Duration(0.1).sleep();
       if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
       ROS_INFO("MOVE READY POSITION");
       linear_path.clear();
 
       std::cout << "Drawing " << dm.drawings[i].color << " " << stroke_num << "th stroke ... " << std::endl;
-      fraction = rightArm.computeCartesianPath(stroke, eef_step, jump_threshold, trajectory);
+      fraction = dm.rightArm->computeCartesianPath(stroke, dm.eef_step, dm.jump_threshold, trajectory);
       ROS_INFO("PLANNING DONE");
-      my_plan_arm_r.trajectory_ = trajectory;
+      my_plan.trajectory_ = trajectory;
       dm.trajectory_pub.publish(trajectory);
 
       // publish
@@ -229,7 +235,7 @@ int main(int argc, char** argv)
       ros::Duration(0.1).sleep();
       // execute
       ROS_INFO("EXECUTING ...");
-      executed = rightArm.execute(my_plan_arm_r);
+      executed = dm.rightArm->execute(my_plan);
       ROS_INFO("EXECUTION DONE");
       ros::Duration(0.1).sleep();
       // publish
@@ -239,6 +245,7 @@ int main(int argc, char** argv)
     }
   }
 
+  dm.initPose();
   ros::Duration(3).sleep(); // wait for 3 sec
 
   ros::shutdown();

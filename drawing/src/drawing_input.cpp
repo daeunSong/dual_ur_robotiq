@@ -116,9 +116,9 @@ double DrawingInput::getDist(geometry_msgs::Pose p1, geometry_msgs::Pose p2) {
 void DrawingInput::splitDrawing () {
   // TODO: ranges fixed
   std::array<double, 2> range;
-  range[0] = 1.0; range[1] = 0.0;
+  range[0] = 1.0; range[1] = 0.0; // right
   this->ranges.push_back(range);
-  range[0] = 0.0; range[1] = -1.0;
+  range[0] = 0.0; range[1] = -1.0;  // left
   this->ranges.push_back(range);
   std::vector<std::vector<Stroke>> strokes_by_range (this->ranges.size());
 
@@ -130,10 +130,10 @@ void DrawingInput::splitDrawing () {
     for (int j = 1; j < this->strokes[i].size(); j++) {
       range_index = this->detectRange(strokes[i][j]);
 
-      if (range_index == 0) //left
-        strokes[i][j].orientation = this->init_drawing_pose_l.orientation;
-      else if (range_index == 1) // right
+      if (range_index == 0) // right
         strokes[i][j].orientation = this->init_drawing_pose_r.orientation;
+      else if (range_index == 1) // left
+        strokes[i][j].orientation = this->init_drawing_pose_l.orientation;
 
       if (range_index_prev != range_index) { // split stroke
         int index = std::min(range_index_prev, range_index);
@@ -141,10 +141,10 @@ void DrawingInput::splitDrawing () {
         contact.position.y = this->ranges[index][1];
         contact.position.z = (strokes[i][j].position.z - strokes[i][j-1].position.z)*(this->ranges[index][1] - strokes[i][j-1].position.y)/(strokes[i][j].position.z - strokes[i][j-1].position.y) + strokes[i][j-1].position.z;
 
-        if (range_index == 0) //right to left
-          contact.orientation = this->init_drawing_pose_r.orientation;
-        else if (range_index == 1) // left to right
-         contact.orientation = this->init_drawing_pose_l.orientation;
+        if (range_index == 0) // left to right
+          contact.orientation = this->init_drawing_pose_l.orientation;
+        else if (range_index == 1) // right to left
+         contact.orientation = this->init_drawing_pose_r.orientation;
 
         stroke.push_back (contact);
 
@@ -154,10 +154,10 @@ void DrawingInput::splitDrawing () {
         }
         Stroke().swap(stroke);
 
-        if (range_index == 0) //right to left
-          contact.orientation = this->init_drawing_pose_l.orientation;
-        else if (range_index == 1) // left to right
-         contact.orientation = this->init_drawing_pose_r.orientation;
+        if (range_index == 0) // left to right
+          contact.orientation = this->init_drawing_pose_r.orientation;
+        else if (range_index == 1) // right to left
+         contact.orientation = this->init_drawing_pose_l.orientation;
 
         stroke.push_back (contact);
         range_index_prev = range_index;
