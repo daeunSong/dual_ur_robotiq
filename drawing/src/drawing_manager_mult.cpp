@@ -1,7 +1,7 @@
 #include "drawing_manager.h"
 
 DrawingManager::DrawingManager(ros::NodeHandle* nh):nh_(*nh) {
-  initMoveGroup();
+//  initMoveGroup();
   initPublisher();
   initMarker();
 }
@@ -18,9 +18,9 @@ void DrawingManager::initMoveGroup() {
 
 void DrawingManager::initPublisher() {
   marker_pub = nh_.advertise<visualization_msgs::Marker>("/target_drawing", 100);
-  drawing_line_pub = nh_.advertise<std_msgs::Bool>("/ready_to_draw", 1);
-  drawing_color_pub = nh_.advertise<geometry_msgs::Point>("/drawing_color", 1);
-  arm_num_pub = nh_.advertise<std_msgs::Int32>("/arm_number", 1);
+  drawing_line_pub = nh_.advertise<std_msgs::Bool>("/ready_to_draw_2", 1);
+  drawing_color_pub = nh_.advertise<geometry_msgs::Point>("/drawing_color_2", 1);
+  arm_num_pub = nh_.advertise<std_msgs::Int32>("/arm_number_2", 1);
   trajectory_pub = nh_.advertise<moveit_msgs::RobotTrajectory>("/trajectory", 1);
 }
 
@@ -140,7 +140,7 @@ void DrawingManager::initPose (){
 int main(int argc, char** argv)
 {
   //*********** Initialize ROSc
-  ros::init(argc, argv, "drawingManager_2");
+  ros::init(argc, argv, "drawingManager");
   ros::NodeHandle nh("~");
 
   DrawingManager dm(&nh);
@@ -167,8 +167,8 @@ int main(int argc, char** argv)
 
   // init pose
   // set all the joint values to the init joint position
-  dm.initPose();
-  ros::Duration(3).sleep(); // wait for 3 sec
+//  dm.initPose();
+//  ros::Duration(3).sleep(); // wait for 3 sec
 
   //save init pose
   dm.init_drawing_pose_r = dm.rightArm->getCurrentPose(dm.EE_LINK_R).pose;
@@ -202,38 +202,39 @@ int main(int argc, char** argv)
   dm.drawing_line_pub.publish(ready);
   MoveItErrorCode executed = MoveItErrorCode::SUCCESS;
 
-  // right arm
+  // left arm
   std_msgs::Int32 arm_num;
-  arm_num.data = 0;
+  arm_num.data = 1;
   dm.arm_num_pub.publish(arm_num);
   for (int i = 0; i < dm.colors.size(); i ++)
   {
     dm.drawing_color_pub.publish(dm.drawings[i].color_);
     stroke_num = 0;
-    for (auto stroke : dm.drawings[i].strokes_by_range[0])
+    for (auto stroke : dm.drawings[i].strokes_by_range[1])
     {
       // move to first position
       command_cartesian_position.pose = stroke[0];
       linear_path.push_back(command_cartesian_position.pose);
-      double fraction = dm.rightArm->computeCartesianPath(linear_path, dm.eef_step, dm.jump_threshold, trajectory);
+      double fraction = dm.leftArm->computeCartesianPath(linear_path, dm.eef_step, dm.jump_threshold, trajectory);
       ROS_INFO("PLANNING DONE");
       my_plan.trajectory_ = trajectory;
-      dm.rightArm->execute(my_plan);  //ros::Duration(0.1).sleep();
+      dm.leftArm->execute(my_plan);  //ros::Duration(0.1).sleep();
       if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
       ROS_INFO("MOVE READY POSITION");
       linear_path.clear();
 
       std::cout << "Drawing " << dm.drawings[i].color << " " << stroke_num << "th stroke ... " << std::endl;
       ready.data = true;
-      dm.drawing_line_pub.publish(ready);
       for (int j = 0; j < stroke.size(); j++){
-//        Eigen::Isometry3d ee;
-//        tf::poseMsgToEigen(stroke[j], ee);
+        Eigen::Isometry3d ee;
+        tf::poseMsgToEigen(stroke[j], ee);
         std::vector<double> joint_values;
-        bool found = kinematic_state.setFromIK(right_arm_, stroke[j], dm.EE_LINK_R, 0.1);
+        bool found = kinematic_state.setFromIK(left_arm_, ee, dm.EE_LINK_L, 0.1);
+        while (!found)
+          found = kinematic_state.setFromIK(left_arm_, ee, dm.EE_LINK_L, 0.1);
         if (found){
-          kinematic_state.copyJointGroupPositions(right_arm_, joint_values);
-          dm.setJointValue(joint_values, 0);
+          kinematic_state.copyJointGroupPositions(left_arm_, joint_values);
+          dm.setJointValue(joint_values, 1);
         }
         else ROS_INFO("Did not find IK solution");
       }
@@ -258,8 +259,8 @@ int main(int argc, char** argv)
     }
   }
 
-  dm.initPose();
-  ros::Duration(3).sleep(); // wait for 3 sec
+//  dm.initPose();
+//  ros::Duration(3).sleep(); // wait for 3 sec
 
   ros::shutdown();
   return 0;

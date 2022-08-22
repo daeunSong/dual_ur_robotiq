@@ -5,5 +5,6 @@
   </include>
 
   <node name="marker_publisher" pkg="drawing" type="marker_publisher" respawn="false" output="screen" />
+  <node name="marker_publisher_2" pkg="drawing" type="marker_publisher_2" respawn="false" output="screen" />
 
 </launch>

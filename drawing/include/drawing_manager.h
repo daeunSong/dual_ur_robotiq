@@ -13,6 +13,9 @@
 
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
+#include <moveit/moveit_cpp/moveit_cpp.h>
+#include <eigen_conversions/eigen_msg.h>
+
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int32.h>
 
@@ -34,6 +37,10 @@ class DrawingManager {
     moveit::planning_interface::MoveGroupInterface *leftArm;
     moveit::planning_interface::MoveGroupInterface *leftGripper;
     moveit::planning_interface::PlanningSceneInterface *planning_scene_interface;
+    const std::string PLANNING_GROUP_ARM_R = "left_arm";
+    const std::string PLANNING_GROUP_GRIPPER_R = "left_gripper";
+    const std::string PLANNING_GROUP_ARM_L = "right_arm";
+    const std::string PLANNING_GROUP_GRIPPER_L = "right_gripper";
     const std::string EE_LINK_R = "left_gripper_tool0";
     const std::string EE_LINK_L = "right_gripper_tool0";
 
@@ -62,15 +69,11 @@ class DrawingManager {
 
     void visualizeStrokes(std::vector<Stroke> &strokes, char color);
     void setJointValue (double q[], int arm_num);
+    void setJointValue (std::vector<double> &q, int arm_num);
     void initPose ();
 
   private:
     ros::NodeHandle nh_;
-
-    const std::string PLANNING_GROUP_ARM_R = "left_arm";
-    const std::string PLANNING_GROUP_GRIPPER_R = "left_gripper";
-    const std::string PLANNING_GROUP_ARM_L = "right_arm";
-    const std::string PLANNING_GROUP_GRIPPER_L = "right_gripper";
 
     void initMoveGroup();
     void initPublisher();

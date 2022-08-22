@@ -51,6 +51,9 @@ class MarkerPublisher {
     ros::Subscriber drawing_sub;
     ros::Subscriber color_sub;
     ros::Subscriber arm_num_sub;
+    ros::Subscriber drawing_sub_2;
+    ros::Subscriber color_sub_2;
+    ros::Subscriber arm_num_sub_2;
     ros::Subscriber traj_sub;
     ros::Subscriber coord_sub; //
 

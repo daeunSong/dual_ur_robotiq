@@ -18,14 +18,14 @@ MarkerPublisher::MarkerPublisher(ros::NodeHandle* nh):nh_(*nh) {
 
 // Init subscriber
 void MarkerPublisher::initSubscriber() {
-  drawing_sub = nh_.subscribe("/ready_to_draw", 10, &MarkerPublisher::drawCallback, this);
-  color_sub = nh_.subscribe("/drawing_color", 10, &MarkerPublisher::colorCallback, this);
-  arm_num_sub = nh_.subscribe("/arm_number", 10, &MarkerPublisher::armNumCallback, this);
+  drawing_sub = nh_.subscribe("/ready_to_draw_2", 10, &MarkerPublisher::drawCallback, this);
+  color_sub = nh_.subscribe("/drawing_color_2", 10, &MarkerPublisher::colorCallback, this);
+  arm_num_sub = nh_.subscribe("/arm_number_2", 10, &MarkerPublisher::armNumCallback, this);
 }
 
 // Init publisher
 void MarkerPublisher::initPublisher() {
-  marker_pub = nh_.advertise<visualization_msgs::Marker>("/drawing_marker", 100);
+  marker_pub = nh_.advertise<visualization_msgs::Marker>("/drawing_marker_2", 100);
 }
 
 // Init marker
@@ -120,7 +120,7 @@ void MarkerPublisher::publishLine(float id) {
 }
 
 int main( int argc, char** argv ) {
-  ros::init(argc, argv, "markerPublisher");
+  ros::init(argc, argv, "markerPublisher_2");
   ros::NodeHandle nh("~");
 
   MarkerPublisher markerPublisher(&nh);

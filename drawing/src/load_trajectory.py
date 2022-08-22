@@ -107,7 +107,7 @@ if __name__ == '__main__':
     file_path = package_path + '/data/trajectory/' + FILE_NAME
 
     right = TrajectoryLoader(file_path, 0)
-    left = TrajectoryLoader(file_path, 1)
+    # left = TrajectoryLoader(file_path, 1)
     right.load_traj()
-    left.load_traj()
+    # left.load_traj()
 
