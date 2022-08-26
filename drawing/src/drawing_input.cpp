@@ -116,9 +116,11 @@ double DrawingInput::getDist(geometry_msgs::Pose p1, geometry_msgs::Pose p2) {
 void DrawingInput::splitDrawing () {
   // TODO: ranges fixed
   std::array<double, 2> range;
-  range[0] = 1.0; range[1] = 0.0; // right
+  range[0] = 1.0; range[1] = 0.05; // right
   this->ranges.push_back(range);
-  range[0] = 0.0; range[1] = -1.0;  // left
+  range[0] = 0.08; range[1] = -0.08; // center
+  this->ranges.push_back(range);
+  range[0] = -0.08; range[1] = -1.0;  // left
   this->ranges.push_back(range);
   std::vector<std::vector<Stroke>> strokes_by_range (this->ranges.size());
 
@@ -132,7 +134,7 @@ void DrawingInput::splitDrawing () {
 
       if (range_index == 0) // right
         strokes[i][j].orientation = this->init_drawing_pose_r.orientation;
-      else if (range_index == 1) // left
+      else if (range_index == 2) // left
         strokes[i][j].orientation = this->init_drawing_pose_l.orientation;
 
       if (range_index_prev != range_index) { // split stroke
@@ -143,7 +145,7 @@ void DrawingInput::splitDrawing () {
 
         if (range_index == 0) // left to right
           contact.orientation = this->init_drawing_pose_l.orientation;
-        else if (range_index == 1) // right to left
+        else if (range_index == 2) // right to left
          contact.orientation = this->init_drawing_pose_r.orientation;
 
         stroke.push_back (contact);
@@ -156,7 +158,7 @@ void DrawingInput::splitDrawing () {
 
         if (range_index == 0) // left to right
           contact.orientation = this->init_drawing_pose_r.orientation;
-        else if (range_index == 1) // right to left
+        else if (range_index == 2) // right to left
          contact.orientation = this->init_drawing_pose_l.orientation;
 
         stroke.push_back (contact);

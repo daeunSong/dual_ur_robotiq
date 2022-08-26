@@ -7,6 +7,7 @@ DrawingManager::DrawingManager(ros::NodeHandle* nh):nh_(*nh) {
 }
 
 void DrawingManager::initMoveGroup() {
+  this->arms = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP_ARMS);
   this->rightArm = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP_ARM_R);
   this->rightGripper = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP_GRIPPER_R);
   this->leftArm = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP_ARM_L);
@@ -14,13 +15,21 @@ void DrawingManager::initMoveGroup() {
 
   this->rightArm->setEndEffectorLink(EE_LINK_R);
   this->leftArm->setEndEffectorLink(EE_LINK_L);
+
+  this->kinematic_model = this->arms->getRobotModel();
+  this->kinematic_state = this->arms->getCurrentState();
+  this->right_arm_ = this->kinematic_model->getJointModelGroup(PLANNING_GROUP_ARM_R);
+  this->left_arm_ = this->kinematic_model->getJointModelGroup(PLANNING_GROUP_ARM_L);
+
+  this->right_joint_names = this->right_arm_->getVariableNames();
+  this->left_joint_names = this->left_arm_->getVariableNames();
 }
 
 void DrawingManager::initPublisher() {
   marker_pub = nh_.advertise<visualization_msgs::Marker>("/target_drawing", 100);
-  drawing_line_pub = nh_.advertise<std_msgs::Bool>("/ready_to_draw_2", 1);
-  drawing_color_pub = nh_.advertise<geometry_msgs::Point>("/drawing_color_2", 1);
-  arm_num_pub = nh_.advertise<std_msgs::Int32>("/arm_number_2", 1);
+  drawing_line_pub = nh_.advertise<std_msgs::Bool>("/ready_to_draw", 1);
+  drawing_color_pub = nh_.advertise<geometry_msgs::Point>("/drawing_color", 1);
+  arm_num_pub = nh_.advertise<std_msgs::Int32>("/arm_number", 1);
   trajectory_pub = nh_.advertise<moveit_msgs::RobotTrajectory>("/trajectory", 1);
 }
 
@@ -65,76 +74,36 @@ void DrawingManager::visualizeStrokes(std::vector<Stroke> &strokes, char color){
   }
 }
 
-void DrawingManager::setJointValue (double q[], int arm_num = 0){
-  moveit::planning_interface::MoveGroupInterface::Plan my_plan;
-  bool success;
-
-  if (arm_num == 0) // right
-  {
-    this->rightArm->setStartStateToCurrentState();
-    this->rightArm->setJointValueTarget("left_shoulder_pan_joint", q[0]);
-    this->rightArm->setJointValueTarget("left_shoulder_lift_joint", q[1]);
-    this->rightArm->setJointValueTarget("left_elbow_joint", q[2]);
-    this->rightArm->setJointValueTarget("left_wrist_1_joint", q[3]);
-    this->rightArm->setJointValueTarget("left_wrist_2_joint", q[4]);
-    this->rightArm->setJointValueTarget("left_wrist_3_joint", q[5]);
-    success = (this->rightArm->plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
-    this->rightArm->execute(my_plan);
-  }
-  else if (arm_num == 1) // left
-  {
-    this->leftArm->setStartStateToCurrentState();
-    this->leftArm->setJointValueTarget("right_shoulder_pan_joint", q[0]);
-    this->leftArm->setJointValueTarget("right_shoulder_lift_joint", q[1]);
-    this->leftArm->setJointValueTarget("right_elbow_joint", q[2]);
-    this->leftArm->setJointValueTarget("right_wrist_1_joint", q[3]);
-    this->leftArm->setJointValueTarget("right_wrist_2_joint", q[4]);
-    this->leftArm->setJointValueTarget("right_wrist_3_joint", q[5]);
-    success = (this->leftArm->plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
-    this->leftArm->execute(my_plan);
-  }
+std::map<std::string, double> DrawingManager::vector2map (const std::vector<std::string> &joint_names, std::vector<double> &joint_values){
+  std::map<std::string, double> m;
+  for (int i = 0; i < joint_names.size(); i++)
+    m.insert({joint_names[i], joint_values[i]});
+  return m;
 }
 
 void DrawingManager::setJointValue (std::vector<double> &q, int arm_num = 0){
-  moveit::planning_interface::MoveGroupInterface::Plan my_plan;
-  bool success;
-
+  std::map<std::string, double> variable_values;
   if (arm_num == 0) // right
-  {
-    this->rightArm->setStartStateToCurrentState();
-    this->rightArm->setJointValueTarget("left_shoulder_pan_joint", q[0]);
-    this->rightArm->setJointValueTarget("left_shoulder_lift_joint", q[1]);
-    this->rightArm->setJointValueTarget("left_elbow_joint", q[2]);
-    this->rightArm->setJointValueTarget("left_wrist_1_joint", q[3]);
-    this->rightArm->setJointValueTarget("left_wrist_2_joint", q[4]);
-    this->rightArm->setJointValueTarget("left_wrist_3_joint", q[5]);
-    success = (this->rightArm->plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
-    this->rightArm->execute(my_plan);
-  }
+    variable_values = vector2map(this->right_joint_names, q);
   else if (arm_num == 1) // left
-  {
-    this->leftArm->setStartStateToCurrentState();
-    this->leftArm->setJointValueTarget("right_shoulder_pan_joint", q[0]);
-    this->leftArm->setJointValueTarget("right_shoulder_lift_joint", q[1]);
-    this->leftArm->setJointValueTarget("right_elbow_joint", q[2]);
-    this->leftArm->setJointValueTarget("right_wrist_1_joint", q[3]);
-    this->leftArm->setJointValueTarget("right_wrist_2_joint", q[4]);
-    this->leftArm->setJointValueTarget("right_wrist_3_joint", q[5]);
-    success = (this->leftArm->plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    variable_values = vector2map(this->left_joint_names, q);
 
-    this->leftArm->execute(my_plan);
-  }
+  this->arms->setJointValueTarget(variable_values);
 }
 
 void DrawingManager::initPose (){
-  double init_r[6] = {172*D2R, -97*D2R, -106*D2R, -73*D2R, -44*D2R, -35*D2R};
-  double init_l[6] = {-178*D2R, -88*D2R, 97*D2R, -102*D2R, 46*D2R, -43*D2R};
+  std::vector<double> init_r = {172*D2R, -97*D2R, -106*D2R, -73*D2R, -44*D2R, -35*D2R};
+  std::vector<double> init_l = {-178*D2R, -88*D2R, 97*D2R, -102*D2R, 46*D2R, -43*D2R};
 
   this->setJointValue(init_r, 0);
   this->setJointValue(init_l, 1);
+
+  moveit::planning_interface::MoveGroupInterface::Plan my_plan;
+  bool success = (this->arms->plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  if(!success){
+    ROS_INFO("Plan did not successed");
+  }
+  this->arms->execute(my_plan);
 }
 
 int main(int argc, char** argv)
@@ -152,18 +121,6 @@ int main(int argc, char** argv)
   moveit::planning_interface::MoveGroupInterface::Plan my_plan;
   moveit_msgs::RobotTrajectory trajectory;
   bool success;
-
-  robot_model_loader::RobotModelLoader robot_model_loader;
-  const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
-//  ROS_INFO("Model frame: %s", kinematic_model->getModelFrame().c_str());
-  planning_scene::PlanningScene planning_scene(kinematic_model);
-  moveit::core::RobotState& kinematic_state = planning_scene.getCurrentStateNonConst();
-  collision_detection::CollisionRequest collision_request;
-  collision_detection::CollisionResult collision_result;
-
-  const robot_state::JointModelGroup* right_arm_ = kinematic_model->getJointModelGroup(dm.PLANNING_GROUP_ARM_R);
-  const robot_state::JointModelGroup* left_arm_ = kinematic_model->getJointModelGroup(dm.PLANNING_GROUP_ARM_L);
-
 
   // init pose
   // set all the joint values to the init joint position
@@ -226,17 +183,15 @@ int main(int argc, char** argv)
       std::cout << "Drawing " << dm.drawings[i].color << " " << stroke_num << "th stroke ... " << std::endl;
       ready.data = true;
       for (int j = 0; j < stroke.size(); j++){
-        Eigen::Isometry3d ee;
-        tf::poseMsgToEigen(stroke[j], ee);
-        std::vector<double> joint_values;
-        bool found = kinematic_state.setFromIK(left_arm_, ee, dm.EE_LINK_L, 0.1);
-        while (!found)
-          found = kinematic_state.setFromIK(left_arm_, ee, dm.EE_LINK_L, 0.1);
-        if (found){
-          kinematic_state.copyJointGroupPositions(left_arm_, joint_values);
-          dm.setJointValue(joint_values, 1);
-        }
-        else ROS_INFO("Did not find IK solution");
+//        std::vector<double> joint_values;
+//        bool found = kinematic_state.setFromIK(left_arm_, stroke[j], dm.EE_LINK_L, 0.1);
+//        while (!found)
+//          found = kinematic_state.setFromIK(left_arm_, stroke[j], dm.EE_LINK_L, 0.1);
+//        if (found){
+//          kinematic_state.copyJointGroupPositions(left_arm_, joint_values);
+//          dm.setJointValue(joint_values, 1);
+//        }
+//        else ROS_INFO("Did not find IK solution");
       }
 
 //      fraction = dm.leftArm->computeCartesianPath(stroke, dm.eef_step, dm.jump_threshold, trajectory);

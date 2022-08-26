@@ -54,11 +54,11 @@ include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${EIGEN3_
 add_executable(drawing_manager src/drawing_manager.cpp)
 target_link_libraries(drawing_manager drawingInput ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
-add_executable(drawing_manager_2 src/drawing_manager_mult.cpp)
-target_link_libraries(drawing_manager_2 drawingInput ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+#add_executable(drawing_manager_2 src/drawing_manager_mult.cpp)
+#target_link_libraries(drawing_manager_2 drawingInput ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
-add_executable(init_pose src/init_pose.cpp)
-target_link_libraries(init_pose ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+#add_executable(init_pose src/init_pose.cpp)
+#target_link_libraries(init_pose ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(marker_publisher src/marker_publisher.cpp)
 target_link_libraries(marker_publisher ${catkin_LIBRARIES})
