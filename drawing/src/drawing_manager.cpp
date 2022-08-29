@@ -272,25 +272,19 @@ int main(int argc, char** argv)
       int cur_stroke_size_r = dm.drawings[color_i_r].strokes_by_range[0].size();
       int cur_point_size_r = dm.drawings[color_i_r].strokes_by_range[0][stroke_i_r].size();
       // check index
+      /////////////////////////////////////// done one stroke
       if (point_i_r == cur_point_size_r) {
         point_i_r = 0;
         stroke_i_r++;
       }
+      /////////////////////////////////////// done one color
       if (stroke_i_r == cur_stroke_size_r){
         stroke_i_r = 0;
         color_i_r++;
         dm.drawing_color_pub.publish(dm.drawings[color_i_r].color_);
-      }
-      // once more
-      cur_stroke_size_r = dm.drawings[color_i_r].strokes_by_range[0].size();
-      if (stroke_i_r == cur_stroke_size_r){
-        stroke_i_r = 0;
-        color_i_r++;
-        dm.drawing_color_pub.publish(dm.drawings[color_i_r].color_);
-      }
-
-      if (color_i_r == dm.colors.size()){
-        done_r = true;
+        if (color_i_r == dm.colors.size()){
+          done_r = true;
+        }
       }
     }
     if (!done_l) {
@@ -309,16 +303,16 @@ int main(int argc, char** argv)
         stroke_i_l = 0;
         color_i_l++;
         dm.drawing_color_pub_2.publish(dm.drawings[color_i_l].color_);
+        if (color_i_l == dm.colors.size()){
+          done_l = true;
+        }
+        else cur_stroke_size_l = dm.drawings[color_i_l].strokes_by_range[2].size();
       }
       // check once more
-      cur_stroke_size_l = dm.drawings[color_i_l].strokes_by_range[2].size();
-      if (stroke_i_l == cur_stroke_size_l){
+      if (cur_stroke_size_l == 0){
         stroke_i_l = 0;
         color_i_l++;
         dm.drawing_color_pub_2.publish(dm.drawings[color_i_l].color_);
-      }
-      if (color_i_l == dm.colors.size()){
-        done_l = true;
       }
     }
 
@@ -411,6 +405,48 @@ int main(int argc, char** argv)
     index++;
   }
 
+  dm.initPose();
+
+  color_i_r = 0;
+  stroke_i_r = 0;
+  point_i_r = 0;
+
+  for (int i = 0; i < dm.colors.size(); i++) {
+    dm.drawing_color_pub.publish(dm.drawings[i].color_);
+    for (auto stroke : dm.drawings[i].strokes_by_range[1]) {
+      // move to first position
+      command_cartesian_position.pose = stroke[0];
+      linear_path.push_back(command_cartesian_position.pose);
+      double fraction = dm.rightArm->computeCartesianPath(linear_path, dm.eef_step, dm.jump_threshold, trajectory);
+      ROS_INFO("PLANNING DONE");
+      my_plan.trajectory_ = trajectory;
+      dm.rightArm->execute(my_plan);  //ros::Duration(0.1).sleep();
+      if (fraction < 0.5) ROS_WARN_STREAM("MOVE READY POSITION ERROR");
+      ROS_INFO("MOVE READY POSITION");
+      linear_path.clear();
+
+      fraction = dm.rightArm->computeCartesianPath(stroke, dm.eef_step, dm.jump_threshold, trajectory_r);
+      trajectory = trajectory_r;
+      arm_num.data = 1;
+//      dm.arm_num_pub.publish(arm_num);
+      dm.trajectory_pub.publish(trajectory);
+      my_plan.trajectory_ = trajectory;
+      ready.data = true;
+      dm.drawing_line_pub.publish(ready);
+      ros::Duration(0.1).sleep();
+      dm.rightArm->execute(my_plan);
+      ROS_INFO("DRAWING ...");
+      ROS_INFO("R: %d, %d, %d", color_i_r, stroke_i_r, point_i_r);
+      ready.data = false;
+      dm.drawing_line_pub.publish(ready);
+
+      ss << index << " " << arm_num.data << " "
+          << color_i_r << " "  << stroke_i_r << " "  <<point_i_r << "\n";
+      stroke_i_r++;
+      index++;
+    }
+    color_i_r++;
+  }
 
   std::ofstream outfile (ros::package::getPath("drawing") + "/data/trajectory/bimanual/"+dm.drawing_file_name+"bimanual.txt",std::ios::app);
   if(!outfile.is_open())

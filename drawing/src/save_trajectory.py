@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     rospack = rospkg.RosPack()
     package_path = rospack.get_path('drawing')
-    file_path = package_path + '/data/trajectory/' + FILE_NAME
+    file_path = package_path + '/data/trajectory/bimanual/' + FILE_NAME
 
     Saver = TrajeectorySaver(file_path)
 
