@@ -1,0 +1,10 @@
+<launch>
+
+  <include file="$(find robot_moveit_config)/launch/moveit_rviz.launch" >
+    <arg name="config" value="$(find drawing)/src/drawing.rviz" />
+  </include>
+
+<!--   <node name="marker_publisher" pkg="drawing" type="marker_publisher" respawn="false" output="screen" /> -->
+<!--   <node name="marker_publisher_2" pkg="drawing" type="marker_publisher_2" respawn="false" output="screen" /> -->
+
+</launch>
